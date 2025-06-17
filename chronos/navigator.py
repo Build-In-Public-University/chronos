@@ -8,7 +8,7 @@ from .manifold import InnovationMetric
 from .trust import TrustGraph
 from .change_algebra import ChangeSet, ChangeEvent
 from .future import FutureChangeSet
-from .ontology import Entity
+from .ontology import Entity, Ontology
 
 class Navigator:
     """Path‑finding over ChangeSets, FutureChangeSets, and Entities."""
@@ -26,6 +26,18 @@ class Navigator:
     def entity_goal_path(self, ent: Entity) -> Tuple[List[str], float]:
         """Return a path from *now* to the entity's goal, ordered chronologically."""
         return self.shortest_time_path(ent.timeline, src=min(ent.timeline.ordered(), key=lambda eid: ent.timeline._events[eid].t0), dst=ent.goal.eid)
+
+    def multi_entity_schedule(self, ont: Ontology) -> ChangeSet:
+        combined = ChangeSet()
+        ents = sorted(ont.entities(), key=lambda e: -e.effective_priority(ont))
+        for ent in ents:
+            for ev in ent.timeline:
+                combined.add(ev)
+            for dependee, _ in ent.dependencies(ont):
+                dep_goal = ont._entities[dependee].goal
+                slack_ev = ChangeEvent(f"slack::{dependee}→{ent.eid}", dep_goal.t1, dt=0.1, prob=1.0)
+                combined.add(slack_ev)
+        return combined
 
     def enumerate_scenarios(self, fcs: FutureChangeSet, *, n: int = 3, max_events: int = 6) -> List[ChangeSet]:
         if fcs.closed:

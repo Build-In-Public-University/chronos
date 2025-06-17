@@ -12,6 +12,7 @@ A minimal, composable Python SDK for modeling change events, trust graphs, and i
 - **Navigator**: Lightweight forward-Euler integrator for arbitrary vector fields.
 - **Future Layer**: Probabilistic, open-ended futures with `FutureChangeSet` and scenario enumeration.
 - **Ontology Layer**: Reusable change schemas and goal-driven entities with `Schema`, `Ontology`, and `Entity`.
+- **Dependency-Aware Scheduling**: Merge timelines from multiple entities, respecting dependencies and priorities.
 
 ## Installation
 
@@ -109,6 +110,50 @@ entity = onto.spawn("my_entity", "feature", "my-goal", my_generator)
 nav = Navigator(InnovationMetric())
 path, total = nav.entity_goal_path(entity)
 print(nav.pretty_report(path))
+```
+
+### Dependency-Aware Scheduling
+```python
+from chronos import Schema, Ontology, Entity, Navigator
+
+# Define schemas
+tea_schema = Schema("tea-party", mean_period=5.0, default_dt=0.5, description="A tea party with Vogons")
+whale_schema = Schema("whale", mean_period=10.0, default_dt=0.2, description="A spontaneous whale appearance")
+petunia_schema = Schema("petunia", mean_period=15.0, default_dt=0.1, description="A petunia uprising")
+
+# Create an ontology and add schemas
+onto = Ontology()
+onto.add_schema(tea_schema)
+onto.add_schema(whale_schema)
+onto.add_schema(petunia_schema)
+
+# Spawn entities with goals
+def tea_generator(entity):
+    return ChangeSet([ChangeEvent("tea-party-with-Vogon", t0=0, dt=0.5, prob=1.0)])
+
+def whale_generator(entity):
+    return ChangeSet([ChangeEvent("spontaneous-whale-appearance", t0=0, dt=0.2, prob=1.0)])
+
+def petunia_generator(entity):
+    return ChangeSet([ChangeEvent("petunia-uprising", t0=0, dt=0.1, prob=1.0)])
+
+tea_entity = onto.spawn("tea_entity", "tea-party", "tea-party-with-Vogon", tea_generator)
+whale_entity = onto.spawn("whale_entity", "whale", "spontaneous-whale-appearance", whale_generator)
+petunia_entity = onto.spawn("petunia_entity", "petunia", "petunia-uprising", petunia_generator)
+
+# Define dependencies
+onto.add_dependency("whale_entity", "tea_entity", kind="supports")
+onto.add_dependency("petunia_entity", "whale_entity", kind="supports")
+
+# Use Navigator to generate a combined timeline
+nav = Navigator(InnovationMetric())
+combined_timeline = nav.multi_entity_schedule(onto)
+
+print("\n🚀 Combined Timeline (with dependencies):")
+for ev in combined_timeline:
+    print(f"  • {ev.eid} (t0: {ev.t0}, dt: {ev.dt})")
+    if ev.eid.startswith("slack"):
+        print("    (Slack event added after dependency)")
 ```
 
 ## Requirements

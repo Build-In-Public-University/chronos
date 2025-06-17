@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, Any, Callable
+from typing import Dict, Any, Callable, List, Tuple
+from collections import defaultdict
 from .change_algebra import ChangeEvent, ChangeSet
 
 @dataclass(frozen=True)
@@ -11,10 +12,33 @@ class Schema:
     description: str = ""
     meta: Dict[str, Any] | None = field(default_factory=dict)
 
+@dataclass
+class Entity:
+    eid: str
+    schema: Schema
+    goal: ChangeEvent
+    timeline: ChangeSet
+    generator: Callable[["Entity"], ChangeSet]
+    priority: int = 0
+
+    def dependencies(self, ont: "Ontology") -> List[Tuple[str, str]]:
+        return ont.dependencies_of(self.eid)
+
+    def dependents(self, ont: "Ontology") -> List[Tuple[str, str]]:
+        return ont.dependents_of(self.eid)
+
+    def effective_priority(self, ont: "Ontology") -> float:
+        pull = sum(1 for _ in self.dependents(ont))
+        return self.priority + pull
+
+    def regenerate(self):
+        self.timeline = self.generator(self) or self.timeline
+
 class Ontology:
     def __init__(self):
         self._schemas: Dict[str, Schema] = {}
-        self._entities: Dict[str, "Entity"] = {}
+        self._entities: Dict[str, Entity] = {}
+        self._deps: Dict[str, Dict[str, str]] = defaultdict(dict)
 
     def add_schema(self, schema: Schema):
         if schema.type_id in self._schemas:
@@ -48,14 +72,13 @@ class Ontology:
     def entities(self):
         return list(self._entities.values())
 
-@dataclass
-class Entity:
-    eid: str
-    schema: Schema
-    goal: ChangeEvent
-    timeline: ChangeSet
-    generator: Callable[["Entity"], ChangeSet]
-    priority: int = 0
+    def add_dependency(self, depender: str, dependee: str, *, kind: str = "supports"):
+        if depender not in self._entities or dependee not in self._entities:
+            raise KeyError("Both entities must exist before linking")
+        self._deps[depender][dependee] = kind
 
-    def regenerate(self):
-        self.timeline = self.generator(self) or self.timeline 
+    def dependencies_of(self, eid: str) -> List[Tuple[str, str]]:
+        return list(self._deps.get(eid, {}).items())
+
+    def dependents_of(self, eid: str) -> List[Tuple[str, str]]:
+        return [(depender, kind) for depender, d in self._deps.items() for dependee, kind in d.items() if dependee == eid] 
