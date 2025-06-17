@@ -15,12 +15,12 @@ A minimal, composable Python SDK for modeling change events, trust graphs, and i
 
 With [UV](https://github.com/astral-sh/uv):
 ```sh
-uv pip install chronos
+uv pip install chronos-innov
 ```
 
 Or with pip:
 ```sh
-pip install chronos
+pip install chronos-innov
 ```
 
 ## Usage
