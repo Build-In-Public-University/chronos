@@ -4,6 +4,7 @@ from .trust import TrustGraph
 from .manifold import InnovationMetric
 from .future import FutureChangeSet
 from .navigator import Navigator
+from .ontology import Schema, Ontology, Entity
 
 __all__ = [
     "change_algebra",
@@ -11,10 +12,14 @@ __all__ = [
     "manifold",
     "future",
     "navigator",
+    "ontology",
     "ChangeEvent",
     "ChangeSet",
     "FutureChangeSet",
     "TrustGraph",
     "InnovationMetric",
     "Navigator",
+    "Schema",
+    "Ontology",
+    "Entity",
 ] 

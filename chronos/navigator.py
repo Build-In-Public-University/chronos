@@ -8,8 +8,11 @@ from .manifold import InnovationMetric
 from .trust import TrustGraph
 from .change_algebra import ChangeSet, ChangeEvent
 from .future import FutureChangeSet
+from .ontology import Entity
 
 class Navigator:
+    """Path‑finding over ChangeSets, FutureChangeSets, and Entities."""
+
     def __init__(self, metric: InnovationMetric, trust_graph: TrustGraph | None = None):
         self.metric = metric
         self.trust = trust_graph or TrustGraph()
@@ -19,6 +22,10 @@ class Navigator:
         path_ids = [ev.eid for ev in ordered if ev.eid in {src, dst} or (ev.t0 >= changes._events[src].t0 and ev.t0 <= changes._events[dst].t0)]
         total = sum(ev.dt for ev in ordered if ev.eid in path_ids)
         return path_ids, total
+
+    def entity_goal_path(self, ent: Entity) -> Tuple[List[str], float]:
+        """Return a path from *now* to the entity's goal, ordered chronologically."""
+        return self.shortest_time_path(ent.timeline, src=min(ent.timeline.ordered(), key=lambda eid: ent.timeline._events[eid].t0), dst=ent.goal.eid)
 
     def enumerate_scenarios(self, fcs: FutureChangeSet, *, n: int = 3, max_events: int = 6) -> List[ChangeSet]:
         if fcs.closed:
@@ -37,7 +44,7 @@ class Navigator:
         return [cs for _, cs in top]
 
     def pretty_report(self, path: Sequence[str]) -> str:
-        lines = ["\n   Chrono‑Innov Navigator – path summary\n   ──────────────────────────────────────"]
+        lines = ["\n   Chrono‑Innov Navigator – path summary", "   ──────────────────────────────────────"]
         for i, eid in enumerate(path):
             lines.append(f"   {i+1:02d}. {eid}")
         return "\n".join(lines) 
